@@ -140,8 +140,6 @@ int main(int argc, char** argv)
     //PEM_read_bio_RSA_PUBKEY
     //RSA_public_decrypt
     //BIO_free
-    string temp = buffWriteChallenge;
-    printf("Print actualWritten %s\n", temp.c_str());
     char hashString[1024];
     memset(hashString, 0, sizeof(hashString));
     
@@ -149,13 +147,34 @@ int main(int argc, char** argv)
     binfile = BIO_new(BIO_s_mem());
     //BIO_free(binfile);
     int actualWritten = BIO_write(binfile, buffWriteChallenge, BUFFER_SIZE);
-    printf("Print actualWritten %s\n", temp.c_str());
    
     hash = BIO_new(BIO_f_md());
     BIO_set_md(hash, EVP_sha1()); 
     BIO_push(hash, binfile);
 
-    int actualRead = BIO_read(hash, hashString, 1024);
+    int actualRead = BIO_gets(hash, hashString, 1024);
+
+    BIO * rsaPublicKeyInput = BIO_new_file("rsapublickey.pem", "r" );
+
+    RSA * rsaPublicKeyVal;
+    rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
+					      NULL, 0, NULL);
+
+    int sizeOfBuff = RSA_size(rsaPublicKeyVal);
+    char decryptSign[BUFFER_SIZE];
+    memset(decryptSign, 0, BUFFER_SIZE);
+
+    int decryptBufferLength = RSA_public_decrypt(sizeOfBuff, 
+						 (const unsigned char*)
+						 buffWriteChallenge,
+						 (unsigned char*)
+						 decryptSign, rsaPublicKeyVal,
+						 RSA_PKCS1_PADDING);
+
+    
+    printf("VALUE OF DECRYPT %d\n", decryptBufferLength);
+    
+
     
     string generated_key= hashString;
     string decrypted_key="";

@@ -141,7 +141,7 @@ int main(int argc, char** argv)
     
     //int actualWritten = BIO_puts(binfile, buff);
    
-    int actualRead = BIO_read(hash, hashString, 1024);
+    int actualRead = BIO_gets(hash, hashString, 1024);
     // int actualRead;
   
     //  while((actualRead = BIO_gets(hash, buff1, 1024)) >= 1);
@@ -178,7 +178,7 @@ int main(int argc, char** argv)
   rsaPrivateKeyParam = PEM_read_bio_RSAPrivateKey(rsaPrivateKeyInput, 
 						NULL, 0, NULL); 
   //buffer we will be putting the signiture value into
-  int sizeOfBuff0 = RSA_size(rsaPrivateKeyParam); //maybe subtract by ll?
+  int sizeOfBuff0 = RSA_size(rsaPrivateKeyParam) - 11; //maybe subtract by ll?
   char buffer0[sizeOfBuff0];
   memset(buffer0, 0, sizeOfBuff0);  
   
