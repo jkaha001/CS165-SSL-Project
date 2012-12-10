@@ -100,40 +100,7 @@ int main(int argc, char** argv)
     memset(buffWriteChallenge, 0, sizeof(buffWriteChallenge));
     for(int i=0; i < sizeof(randomNumber); i++) 
       buffWriteChallenge[i] = randomNumber[i];
-
-
-    //get the public key
-    BIO * rsaPublicKeyInput = BIO_new_file("rsapublickey.pem", "r" );
-    
-    //get the RSA public key parameters
-    RSA * rsaPublicKeyVal;
-    rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
-					      NULL, 0, NULL);
-    
-    //buffer we will be putting the signiture value into
-    int sizeOfChallengeEnc = RSA_size(rsaPublicKeyVal) - 11;
-    char challengeEnc[sizeOfChallengeEnc];
-    memset(challengeEnc, 0, sizeOfChallengeEnc);  
-    
-    //encrypt the challenge number
-    int encryptBufferLength = RSA_public_encrypt(sizeOfChallengeEnc, 
-						 (const unsigned char*)
-						 (buffWriteChallenge),
-						 (unsigned char*)
-						 challengeEnc,
-						 rsaPublicKeyVal,
-						 RSA_PKCS1_PADDING);   
-
-    for(int i=0; i < sizeof(randomNumber); i++) 
-      buffWriteChallenge[i] = randomNumber[i];
-
-
-    printf("\nThe orignal challenge value is: %s\n", randomNumber.c_str());
-    printf("\nThe encrypted challenge size is: %d\n", encryptBufferLength);
-    printf("\nThe encrypted challenge value is: %s\n",buff2hex((const unsigned char*)challengeEnc, encryptBufferLength).c_str());
-
-
-    buffWriteChallengeLen = SSL_write(ssl, challengeEnc, encryptBufferLength);
+    buffWriteChallengeLen = SSL_write(ssl, buffWriteChallenge, BUFFER_SIZE);
     //wait to make sure that all information has been successfully sent
     int test = BIO_flush(client);
       
@@ -147,7 +114,7 @@ int main(int argc, char** argv)
     }
     
     printf("SUCCESS.\n");
-    printf("    (Challenge sent: \"%s\")\n", buff2hex((const unsigned char*)challengeEnc, encryptBufferLength).c_str());
+    printf("    (Challenge sent: \"%s\")\n", randomNumber.c_str());
     
     //-------------------------------------------------------------------------
     // 3a. Receive the signed key from the server
@@ -177,53 +144,44 @@ int main(int argc, char** argv)
     memset(hashString, 0, sizeof(hashString));
     
     BIO *binfile, *boutfile, *hash;
-    
-    //create the hash number
     binfile = BIO_new(BIO_s_mem());
-    
-    //create a stream for us to chain the hash stream
+    //BIO_free(binfile);
     int actualWritten = BIO_write(binfile, buffWriteChallenge, BUFFER_SIZE);
-    
-    //create the hash stream
+   
     hash = BIO_new(BIO_f_md());
-    BIO_set_md(hash, EVP_sha1());
-    //chain the hash stream
-    BIO_push(hash, binfile);  
+    BIO_set_md(hash, EVP_sha1()); 
+    BIO_push(hash, binfile);
 
-    //get the value from the hash stream and record that size
-    int actualRead = BIO_gets(hash, hashString, BUFFER_SIZE);
+    int actualRead = BIO_gets(hash, hashString, 1024);
 
-    
-    //decrypt the number sent from the server
-   
-    
-   
-    //create a new buffer to store the decrypted value
-    int sizeOfBuff = buffReadChallengeLen;
+    BIO * rsaPublicKeyInput = BIO_new_file("rsapublickey.pem", "r" );
+
+    RSA * rsaPublicKeyVal;
+    rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
+					      NULL, 0, NULL);
+
+    int sizeOfBuff = RSA_size(rsaPublicKeyVal) - 12;
     char decryptSign[sizeOfBuff];
     memset(decryptSign, 0, sizeOfBuff);
-    
-    //decrypt the buffer and store the size of the new key
-    int decryptBufferLength = RSA_public_decrypt(sizeOfBuff,
+
+    int decryptBufferLength = RSA_public_decrypt(buffReadChallengeLen,
 						 (const unsigned char*)
-						 buffReadChallenge,
-						  (unsigned char*)
-						 decryptSign, 
-						 rsaPublicKeyVal,
-						 RSA_PKCS1_PADDING);    
-    //check if there is an error
-    if( decryptBufferLength == -1 ){
-      print_errors();
-      exit(-1);
-    }
+						 buffWriteChallenge,
+						 (unsigned char*)
+						 decryptSign, rsaPublicKeyVal,
+						 RSA_PKCS1_PADDING);
+
+    
+    printf("VALUE OF DECRYPT %d\n", decryptBufferLength);
+    
+
     
     string generated_key= hashString;
-    string decrypted_key= decryptSign;
+    string decrypted_key="";
     
-    //print the outputs
     printf("AUTHENTICATED\n");
-    printf("    (Generated key: %s)\n", buff2hex((const unsigned char*)hashString,actualRead).c_str());
-    printf("    (Decrypted key: %s)\n", buff2hex((const unsigned char*)decryptSign,decryptBufferLength).c_str());
+    printf("    (Generated key: %s)\n", generated_key.c_str());
+    printf("    (Decrypted key: %s)\n", decrypted_key.c_str());
     
     //-------------------------------------------------------------------------
     // 4. Send the server a file request
@@ -233,11 +191,6 @@ int main(int argc, char** argv)
     //BIO_flush
     //BIO_puts
     //SSL_write
-
-    SSL_write(ssl, filename, sizeof(filename) );
-    BIO_flush(client);
-
-    
     
     printf("SENT.\n");
     printf("    (File requested: \"%s\")\n", filename);
