@@ -7,6 +7,7 @@
 #include <string>
 #include <time.h>               // to seed random number generator
 #include <sstream>          // stringstreams
+#include <fstream>
 using namespace std;
 #include <openssl/rand.h>
 #include <openssl/ssl.h>	// Secure Socket Layer library
@@ -259,7 +260,7 @@ int main(int argc, char** argv)
     memset(encFileName, 0, sizeOfEncFileName);  
     
     //encrypt the challenge number
-    int encFileNameSize = RSA_public_encrypt(sizeof(filename), 
+    int encFileNameSize = RSA_public_encrypt(sizeof(filename)+1, 
 					     (const unsigned char*)
 					     (filename),
 					     (unsigned char*)
@@ -285,6 +286,20 @@ int main(int argc, char** argv)
     //SSL_read
     //BIO_write
     //BIO_free
+
+    BIO * fileWrite = BIO_new_file("outputFile.txt","w");
+    char lineWrite[BUFFER_SIZE];
+    memset(lineWrite, 0, BUFFER_SIZE);
+    int bytesRead = 1;
+    while( bytesRead > 0 )
+      {
+	bytesRead = SSL_read(ssl, lineWrite, BUFFER_SIZE );
+	printf("\nBytesRead = %d", bytesRead );
+	printf("\nLine that was read in: %s\n", lineWrite);
+        int bytesWritten = BIO_write(fileWrite, lineWrite, bytesRead );
+	printf("\nbytesWritten = %d", bytesWritten);  
+	memset(lineWrite, 0, BUFFER_SIZE);
+      }
     
     printf("FILE RECEIVED.\n");
     
