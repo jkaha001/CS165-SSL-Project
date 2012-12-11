@@ -288,17 +288,44 @@ int main(int argc, char** argv)
     //BIO_free
 
     BIO * fileWrite = BIO_new_file("outputFile.txt","w");
-    char lineWrite[BUFFER_SIZE];
-    memset(lineWrite, 0, BUFFER_SIZE);
+  
     int bytesRead = 1;
     while( bytesRead > 0 )
       {
-	bytesRead = SSL_read(ssl, lineWrite, BUFFER_SIZE );
+	int maxLineSize = RSA_size(rsaPublicKeyVal) - 11;
+	char lineWrite[maxLineSize];
+	memset(lineWrite, 0, maxLineSize);
+	
+	//read the line from the server in
+	bytesRead = SSL_read(ssl, lineWrite, maxLineSize );
+	
+	//create a buffer to hold the decrypted lines
+	char decLine[bytesRead];
+	memset(decLine, 0, bytesRead);
+
 	printf("\nBytesRead = %d", bytesRead );
-	printf("\nLine that was read in: %s\n", lineWrite);
-        int bytesWritten = BIO_write(fileWrite, lineWrite, bytesRead );
-	printf("\nbytesWritten = %d", bytesWritten);  
-	memset(lineWrite, 0, BUFFER_SIZE);
+	printf("\nLine that was read in: %s", 
+	       buff2hex((const unsigned char*) lineWrite, bytesRead).c_str());
+        
+	//decrypt the lines of text
+	int decLineSize = RSA_public_decrypt(bytesRead,
+					     (const unsigned char*)
+					     lineWrite,
+					     (unsigned char*)
+					     decLine, 
+					     rsaPublicKeyVal,
+					     RSA_PKCS1_PADDING);    
+	//check if there is an error
+	if( decLineSize == -1 ){
+	  print_errors();
+	  exit(-1);
+	}
+
+	int bytesWritten = BIO_write(fileWrite, decLine, decLineSize );
+	printf("\nbytesWritten = %d", bytesWritten);
+	printf("\nPrinting out the DECRYPTED File Text:\n %s", 
+	       buff2hex((const unsigned char*)decLine, decLineSize).c_str());
+	//	memset(lineWrite, 0, BUFFER_SIZE);
       }
     
     printf("FILE RECEIVED.\n");
