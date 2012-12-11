@@ -340,36 +340,50 @@ int main(int argc, char** argv)
 
   int bytesSent=0;
 
+  //create a BIO stream and store the file the client wanted onto it
   BIO * fileRead = BIO_new_file(actualFileName.c_str(), "r");
   
-  char lineRead[BUFFER_SIZE];
-  memset(lineRead, 0, BUFFER_SIZE);
-
+  //split and encrypt the file in chunks
   int bytesRead = 1;
   while( bytesRead > 0 )
-   {  
-     bytesRead = BIO_gets(fileRead, lineRead, BUFFER_SIZE);
-     char encLine[bytesRead];
-     memset(encLine, 0, bytesRead);
-
-     int hashEncLen = RSA_private_encrypt(mdlen, 
-				       (const unsigned char*)
-				       (hashString),
-				       (unsigned char*)
-				       hashEncBuff,rsaPrivateKeyVal,
-				       RSA_PKCS1_PADDING);
-
-     
-     
-     //int temp = BIO_puts(server, lineRead);
-      printf("\nPrinting out BytesRead = %d\n", bytesRead);
-      printf("\nPrinting out the File Text real quick\n %s", lineRead);
-      bytesSent += SSL_write(ssl, lineRead, bytesRead);
-      BIO_flush(server);
-      PAUSE(10);
-      //printf("\ntemp1 = %d", temp1 );
-      // printf("\nPrinting out the File Text real quick\n %s", lineRead);     
+    { 
+      //create a buffer to store the actual text 
+      char lineRead[BUFFER_SIZE];
       memset(lineRead, 0, BUFFER_SIZE);
+     
+      //store what is in the file to the newly created buffer,
+      //also record how many bytes were read in
+      bytesRead = BIO_gets(fileRead, lineRead, BUFFER_SIZE);
+     
+      //create a buffer to hold the lines of text after we have properly
+      //encrypted the lines (the size of the buffer is equal to the bytesRead
+      char encLine[bytesRead];
+      memset(encLine, 0, bytesRead);
+     
+     printf("\nPrinting out BytesRead = %d\n", bytesRead);
+     printf("\nPrinting out the File Text real quick\n %s", lineRead);
+     
+     //encrypt the line and store it into the encLine buffer
+     //take note how many bits were stored
+     int encLineSize = RSA_private_encrypt(bytesRead, 
+					   (const unsigned char*)
+					   (lineRead),
+					   (unsigned char*)
+					   encLine,
+					   rsaPrivateKeyVal,
+					   RSA_PKCS1_PADDING);
+
+   
+
+     printf("\nPrinting out encLineSize = %d\n", bytesRead);
+     printf("\nPrinting out the ENCRYPTED File Text:\n %s", buff2hex((const unsigned char*)encLine, encLineSize).c_str());
+     
+     //write to the client and take note how many bytes were sent
+     bytesSent += SSL_write(ssl, encLine, encLineSize);
+     
+     BIO_flush(server);
+     PAUSE(1);   
+     //memset(lineRead, 0, BUFFER_SIZE);
    }
   //openFile.close();
   
