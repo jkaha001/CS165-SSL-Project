@@ -93,8 +93,7 @@ int main(int argc, char** argv)
     // 2. Send the server a random number
     printf("2.  Sending challenge to the server...");
     
-    // string randomNumber="31337"; //create a random number rand(3)
-    int sizeOfRandNumber = 64;  //harcoded value
+    int sizeOfRandNumber = 64;  //harcoded size of random number
     char randomNumber[sizeOfRandNumber];
     if( RAND_bytes((unsigned char*)randomNumber,sizeOfRandNumber) == -1 )
       {
@@ -102,8 +101,6 @@ int main(int argc, char** argv)
 	exit(-1);
       }
 
-
-    printf("\nsize of randomNumber %d\n", sizeof(randomNumber));
     //SSL_write
     int buffWriteChallengeLen = sizeOfRandNumber;
     char buffWriteChallenge[buffWriteChallengeLen];
@@ -119,9 +116,6 @@ int main(int argc, char** argv)
     RSA * rsaPublicKeyVal;
     rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
 					      NULL, 0, NULL);
-    
-    printf("\nsize of randomNumber %d\n", sizeof(randomNumber));
-    printf("\nsize of buffwritechallenge %d\n", buffWriteChallengeLen);
     
     //buffer we will be putting the signiture value into
     int sizeOfChallengeEnc = RSA_size(rsaPublicKeyVal)-11;
@@ -141,14 +135,12 @@ int main(int argc, char** argv)
       buffWriteChallenge[i] = randomNumber[i];
 
 
-    printf("\nThe orignal challenge value is: %s\n", buff2hex((const unsigned char*)randomNumber,sizeOfRandNumber).c_str());
-    printf("\nThe encrypted challenge size is: %d\n", encryptBufferLength);
-    printf("\nThe encrypted challenge value is: %s\n",buff2hex((const unsigned char*)challengeEnc, encryptBufferLength).c_str());
+    printf("\n    The orignal challenge value is: %s", buff2hex((const unsigned char*)randomNumber,sizeOfRandNumber).c_str());
+    printf("\n    The encrypted challenge value is: %s\n",buff2hex((const unsigned char*)challengeEnc, encryptBufferLength).c_str());
 
 
     buffWriteChallengeLen = SSL_write(ssl, challengeEnc, encryptBufferLength);
 
-    //printf("\nbuffWriteChallengeLen is %d\n", buffWriteChallengeLen);
     //wait to make sure that all information has been successfully sent
     int test = BIO_flush(client);
       
@@ -210,8 +202,6 @@ int main(int argc, char** argv)
 
     
     //decrypt the number sent from the server
-   
-    
    
     //create a new buffer to store the decrypted value
     int sizeOfBuff = buffReadChallengeLen;
@@ -288,7 +278,8 @@ int main(int argc, char** argv)
     //SSL_read
     //BIO_write
     //BIO_free
-
+    
+    //write to the file outputFile.txt
     BIO * fileWrite = BIO_new_file("outputFile.txt","w");
   
     int bytesRead = 1;
@@ -323,7 +314,7 @@ int main(int argc, char** argv)
 	memset(decLine, 0, bytesRead);
 
 	printf("\nBytesRead = %d", bytesRead );
-	printf("\nLine that was read in: %s", 
+	printf("\nEncrypted line that was read in: %s", 
 	       buff2hex((const unsigned char*) lineWrite, bytesRead).c_str());
         
 	//decrypt the lines of text
@@ -344,7 +335,6 @@ int main(int argc, char** argv)
 	printf("\nbytesWritten = %d", bytesWritten);
 	string actualLine = decLine;
 	printf("\nPrinting out the DECRYPTED File Text:\n %s", actualLine.c_str());
-	//	memset(lineWrite, 0, BUFFER_SIZE);
 
       }
     
@@ -366,6 +356,5 @@ int main(int argc, char** argv)
     print_errors();
     SSL_CTX_free(ctx);
     SSL_free(ssl);
-    return EXIT_SUCCESS;
-    
+    return EXIT_SUCCESS;   
 }

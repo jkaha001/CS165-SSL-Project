@@ -102,17 +102,12 @@ int main(int argc, char** argv)
   //SSL_read
   string challenge="";
   
-  
   int bufflen = 0;
   char buff[BUFFER_SIZE];
   memset(buff, 0, BUFFER_SIZE);
+  
+  //read what writen from the client
   bufflen = SSL_read(ssl, buff, BUFFER_SIZE);
-  //  printf("Length of th read is %d!!!\n", bufflen);
-
-//   char challengeReadBuff[bufflen];
-//   memset(challengeReadBuff, 0, bufflen);
-// //   for(int i=0; i < bufflen; i++) 
-// //     challengeReadBuff[i] = buff[i];
 
   printf("    (Challenge: \"%s\")\n", buff2hex((const unsigned char*)buff,bufflen).c_str());
   
@@ -171,28 +166,19 @@ int main(int argc, char** argv)
 
   char hashString[1024];
   memset(hashString, 0, sizeof(hashString));
-  //SHA1 function that John told me about
-  // SHA1((const unsigned char*)buff,bufflen,(unsigned char*)buff1);
   
-    BIO *binfile, *boutfile, *hash;
-    binfile = BIO_new(BIO_s_mem());
-    int actualWritten = BIO_write(binfile, buff, bufflen);
+  BIO *binfile, *boutfile, *hash;
+  //create a new bio stream
+  binfile = BIO_new(BIO_s_mem());
   
-    hash = BIO_new(BIO_f_md());
-    BIO_set_md(hash, EVP_sha1()); 
-    BIO_push(hash, binfile);
-    
-    //int actualWritten = BIO_puts(binfile, buff);
-   
-    int actualRead = BIO_gets(hash, hashString, 1024);
-    // int actualRead;
-    
-    //  while((actualRead = BIO_gets(hash, buff1, 1024)) >= 1);
-    //       {
-    // actualWritten = BIO_write(boutfile, (const unsigned char*)(buffer),
-    //         //			actualRead);
-    //       }
+  //
+  int actualWritten = BIO_write(binfile, buff, bufflen);
   
+  hash = BIO_new(BIO_f_md());
+  BIO_set_md(hash, EVP_sha1()); 
+  BIO_push(hash, binfile);
+  
+  int actualRead = BIO_gets(hash, hashString, 1024);
   
   int mdlen = actualRead;
   string hash_string = hashString;
@@ -208,18 +194,8 @@ int main(int argc, char** argv)
   //PEM_read_bio_RSAPrivateKey
   //RSA_private_encrypt
 
-  //buffer we will be putting the signiture value into
- //  char buffer0[1024];
-//   memset(buffer0, 0, sizeof(buffer0));
-  
-  //create an input stream that will hold the rsaPrivateKey value
-  //  BIO * rsaPrivateKeyInput = BIO_new_file("rsaprivatekey.pem","r");
-
   //load what is in the rsaPrivateKeyInput stream into the RSA defined 
   //object (this will contain S = (phi(n),d) and such)
-  //RSA * rsaPrivateKeyParam;
-  //rsaPrivateKeyParam = PEM_read_bio_RSAPrivateKey(rsaPrivateKeyInput, 
-  //NULL, 0, NULL); 
   //buffer we will be putting the signiture value into
   int sizeOfHashEnc = RSA_size(rsaPrivateKeyVal) - 11; //maybe subtract by ll?
   char hashEncBuff[sizeOfHashEnc];
@@ -236,43 +212,12 @@ int main(int argc, char** argv)
 				       (const unsigned char*)
 				       (hashString),
 				       (unsigned char*)
-				       hashEncBuff,rsaPrivateKeyVal,
+				       hashEncBuff,
+				       rsaPrivateKeyVal,
 				       RSA_PKCS1_PADDING);
 
   int siglen = hashEncLen;
   char* signature=hashEncBuff;  
-  
-
-
-//   //FOR TESTING PURPOSES///////////////////////////////////////////////////////
-
-//   BIO * rsaPublicKeyInput = BIO_new_file("rsapublickey.pem", "r" );
-  
-//   RSA * rsaPublicKeyVal;
-//   rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
-// 					    NULL, 0, NULL);
-  
-//   int sizeOfBuff = encryptBufferLength;
-//   char decryptSign[sizeOfBuff];
-//   memset(decryptSign, 0, sizeOfBuff);
-  
-//   int decryptBufferLength = RSA_public_decrypt(sizeOfBuff,
-// 					       (const unsigned char*)
-// 					       buffer0,
-// 					       (unsigned char*)
-// 					       decryptSign, 
-// 					       rsaPublicKeyVal,
-// 					       RSA_PKCS1_PADDING);
-
-//   string testing = decryptSign; 
-
-//   printf("    (TESTING: Signed key length: %d bytes)\n", siglen);
-//   printf("    (TESTING:Signature: \"%s\" (%d bytes))\n", buff2hex((const unsigned char*)signature, siglen).c_str(), siglen);
-  
-//   printf("\nTESTING:Size of decrypted Value = %d!!!", decryptBufferLength);
-//   printf("\nTESTING:Printing decrypted value %s\n", buff2hex((const unsigned char*)decryptSign, decryptBufferLength).c_str());
-
-//   ///////////////////////////////////////////////////////////////////////////
   
   printf("DONE.\n");
   printf("    (Signed key length: %d bytes)\n", siglen);
@@ -339,7 +284,7 @@ int main(int argc, char** argv)
   //BIO_read(bfile, buffer, BUFFER_SIZE)) > 0)
   //SSL_write(ssl, buffer, bytesRead);
 
-  int bytesSent=0;
+  int bytesSent = 0;
 
   //create a BIO stream and store the file the client wanted onto it
   BIO * fileRead = BIO_new_file(actualFileName.c_str(), "r");
@@ -362,8 +307,8 @@ int main(int argc, char** argv)
       char encLine[bytesRead];
       memset(encLine, 0, bytesRead);
      
-     printf("\nPrinting out BytesRead = %d\n", bytesRead);
-     printf("\nPrinting out the File Text real quick\n %s", lineRead);
+     printf("\nPrinting out BytesRead = %d", bytesRead);
+     printf("\nPrinting out the File Text:\n %s", lineRead);
      
      //encrypt the line and store it into the encLine buffer
      //take note how many bits were stored
@@ -381,8 +326,6 @@ int main(int argc, char** argv)
 	  exit(-1);
      }
    
-
-     printf("\nPrinting out encLineSize = %d\n", encLineSize);
      printf("\nPrinting out the ENCRYPTED File Text:\n %s", 
 	    buff2hex((const unsigned char*)encLine, encLineSize).c_str());
      
@@ -390,17 +333,8 @@ int main(int argc, char** argv)
      int temp = SSL_write(ssl, encLine, encLineSize);
      BIO_flush(server);
      bytesSent += temp;
-     printf("\nBytes sent to server %d\n",temp); 
-     
-
-     PAUSE(1);   
-     //memset(lineRead, 0, BUFFER_SIZE);
+    
    }
-  //openFile.close();
-  
-  
-  
- 
   
   printf("SENT.\n");
   printf("    (Bytes sent: %d)\n", bytesSent);
