@@ -8,7 +8,7 @@
 #include <time.h>               // to seed random number generator
 #include <sstream>          // stringstreams
 using namespace std;
-
+#include <openssl/rand.h>
 #include <openssl/ssl.h>	// Secure Socket Layer library
 #include <openssl/bio.h>	// Basic Input/Output objects for SSL
 #include <openssl/rsa.h>	// RSA algorithm etc
@@ -92,13 +92,22 @@ int main(int argc, char** argv)
     // 2. Send the server a random number
     printf("2.  Sending challenge to the server...");
     
-    string randomNumber="31337"; //create a random number rand(3)
-    
+    // string randomNumber="31337"; //create a random number rand(3)
+    int sizeOfRandNumber = 64;  //harcoded value
+    char randomNumber[sizeOfRandNumber];
+    if( RAND_bytes((unsigned char*)randomNumber,sizeOfRandNumber) == -1 )
+      {
+	print_errors();
+	exit(-1);
+      }
+
+
+    printf("\nsize of randomNumber %d\n", sizeof(randomNumber));
     //SSL_write
-    int buffWriteChallengeLen = 0;
-    char buffWriteChallenge[BUFFER_SIZE];
-    memset(buffWriteChallenge, 0, sizeof(buffWriteChallenge));
-    for(int i=0; i < sizeof(randomNumber); i++) 
+    int buffWriteChallengeLen = sizeOfRandNumber;
+    char buffWriteChallenge[buffWriteChallengeLen];
+    memset(buffWriteChallenge, 0, buffWriteChallengeLen);
+    for(int i=0; i < sizeOfRandNumber; i++) 
       buffWriteChallenge[i] = randomNumber[i];
 
 
@@ -110,13 +119,16 @@ int main(int argc, char** argv)
     rsaPublicKeyVal = PEM_read_bio_RSA_PUBKEY(rsaPublicKeyInput, 
 					      NULL, 0, NULL);
     
+    printf("\nsize of randomNumber %d\n", sizeof(randomNumber));
+    printf("\nsize of buffwritechallenge %d\n", buffWriteChallengeLen);
+    
     //buffer we will be putting the signiture value into
-    int sizeOfChallengeEnc = RSA_size(rsaPublicKeyVal) - 11;
+    int sizeOfChallengeEnc = RSA_size(rsaPublicKeyVal)-11;
     char challengeEnc[sizeOfChallengeEnc];
     memset(challengeEnc, 0, sizeOfChallengeEnc);  
     
     //encrypt the challenge number
-    int encryptBufferLength = RSA_public_encrypt(sizeOfChallengeEnc, 
+    int encryptBufferLength = RSA_public_encrypt(sizeOfRandNumber, 
 						 (const unsigned char*)
 						 (buffWriteChallenge),
 						 (unsigned char*)
@@ -128,7 +140,7 @@ int main(int argc, char** argv)
       buffWriteChallenge[i] = randomNumber[i];
 
 
-    printf("\nThe orignal challenge value is: %s\n", randomNumber.c_str());
+    printf("\nThe orignal challenge value is: %s\n", buff2hex((const unsigned char*)randomNumber,sizeOfRandNumber).c_str());
     printf("\nThe encrypted challenge size is: %d\n", encryptBufferLength);
     printf("\nThe encrypted challenge value is: %s\n",buff2hex((const unsigned char*)challengeEnc, encryptBufferLength).c_str());
 
@@ -219,6 +231,12 @@ int main(int argc, char** argv)
     
     string generated_key= hashString;
     string decrypted_key= decryptSign;
+
+    //if not same then Server could not be authenticated
+    if( generated_key != decrypted_key ){
+      printf("\nServer could not be authenticated... Ending Simulation\n");
+      exit(0);
+    }
     
     //print the outputs
     printf("AUTHENTICATED\n");
@@ -234,14 +252,31 @@ int main(int argc, char** argv)
     //BIO_puts
     //SSL_write
 
-    SSL_write(ssl, filename, sizeof(filename) );
+    
+    //buffer we will be putting the filename value into
+    int sizeOfEncFileName = RSA_size(rsaPublicKeyVal) - 11;
+    char encFileName[sizeOfEncFileName];
+    memset(encFileName, 0, sizeOfEncFileName);  
+    
+    //encrypt the challenge number
+    int encFileNameSize = RSA_public_encrypt(sizeof(filename), 
+					     (const unsigned char*)
+					     (filename),
+					     (unsigned char*)
+					     encFileName,
+					     rsaPublicKeyVal,
+					     RSA_PKCS1_PADDING); 
+
+    
+
+    SSL_write(ssl, encFileName, encFileNameSize );
     BIO_flush(client);
 
     
     
     printf("SENT.\n");
     printf("    (File requested: \"%s\")\n", filename);
-    
+    printf("    (File requesteds encryption vale: \"%s\")\n",buff2hex((const unsigned char*)encFileName, encFileNameSize).c_str());
     //-------------------------------------------------------------------------
     // 5. Receives and displays the contents of the file requested
     printf("5.  Receiving response from server...");

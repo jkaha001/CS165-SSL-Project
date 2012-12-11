@@ -104,10 +104,15 @@ int main(int argc, char** argv)
   
   int bufflen = 0;
   char buff[BUFFER_SIZE];
-  memset(buff, 0, sizeof(buff));
+  memset(buff, 0, BUFFER_SIZE);
   bufflen = SSL_read(ssl, buff, BUFFER_SIZE);
 
-  printf("    (Challenge: \"%s\")\n", challenge.c_str());
+//   char challengeReadBuff[bufflen];
+//   memset(challengeReadBuff, 0, bufflen);
+// //   for(int i=0; i < bufflen; i++) 
+// //     challengeReadBuff[i] = buff[i];
+
+  printf("    (Challenge: \"%s\")\n", buff2hex((const unsigned char*)buff,bufflen).c_str());
   
   //decrypt the challenge value
   //read the private key text into a stream
@@ -117,7 +122,6 @@ int main(int argc, char** argv)
   RSA * rsaPrivateKeyVal;
   rsaPrivateKeyVal = PEM_read_bio_RSAPrivateKey(rsaPrivateKeyInput, 
 						NULL, 0, NULL); 
-
   //create a new buffer for challenge
   int sizeOfChallenge = bufflen;
   char challengeDecBuff[sizeOfChallenge];
@@ -133,14 +137,22 @@ int main(int argc, char** argv)
 					   rsaPrivateKeyVal,
 					   RSA_PKCS1_PADDING);  
 
+  if( challengeDecLen == -1 ){
+    print_errors();
+    printf("SOMETHING WRONG IN PRIVATE DECRYPT");
+    exit(-1);
+  }
+
   printf("\nSize of the decrypted challenge %d\n", challengeDecLen);
-  printf("\nChallenge after decrypt: %s\n", buff2hex((const unsigned char*)challengeDecLen,challengeDecLen).c_str());
+  printf("\nChallenge after decrypt: %s\n", buff2hex((const unsigned char*)challengeDecBuff,challengeDecLen).c_str());
  
-  challenge = buff;
+  challenge = challengeDecBuff;
   
   
   printf("DONE.\n");
-  printf("    (Challenge: \"%s\")\n", challenge.c_str());
+  printf("    (Challenge: \"%s\")\n", buff2hex((const unsigned char*)
+					       challengeDecBuff,
+					       challengeDecLen).c_str());
   
   //-------------------------------------------------------------------------
   // 3. Generate the SHA1 hash of the challenge
@@ -287,13 +299,14 @@ int main(int argc, char** argv)
   printf("6. Receiving file request from client...");
   
   //SSL_read
+  int fileNameSize = BUFFER_SIZE;
+  char fileNameRecieved[fileNameSize];
+  memset(fileNameRecieved, 0, fileNameSize);
+  fileNameSize = SSL_read(ssl, fileNameRecieved, fileNameSize);
+  // printf("filenamesize = %d", fileNameSize);
   
-  
-  
-  char file[BUFFER_SIZE];
-  memset(file,0,sizeof(file));
   printf("RECEIVED.\n");
-  printf("    (File requested: \"%s\"\n", file);
+  printf("    (File requested: \"%s\"\n", buff2hex((const unsigned char*)fileNameRecieved, fileNameSize).c_str());
   
   //-------------------------------------------------------------------------
   // 7. Send the requested file back to the client (if it exists)
