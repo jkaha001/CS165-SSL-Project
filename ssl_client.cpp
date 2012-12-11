@@ -292,6 +292,7 @@ int main(int argc, char** argv)
     BIO * fileWrite = BIO_new_file("outputFile.txt","w");
   
     int bytesRead = 1;
+    bool isStreamEmpty = true;
     while( bytesRead > 0 )
       {
 	int maxLineSize = BUFFER_SIZE;
@@ -300,6 +301,22 @@ int main(int argc, char** argv)
 	
 	//read the line from the server in
 	bytesRead = SSL_read(ssl, lineWrite, maxLineSize );
+	
+	if( bytesRead > 0 ) isStreamEmpty = false;
+	
+	if( bytesRead == 0 )
+	  {
+	    if( isStreamEmpty ){
+	      printf("\nThere was either no information sent from the server or the there was a problem sending\n");
+	      exit(-1);
+	    }
+	    else{
+	      printf("\nReached the end of file\n");
+	      break;
+	    }
+	  }
+	    
+	    
 	
 	//create a buffer to hold the decrypted lines
 	char decLine[bytesRead];
@@ -328,6 +345,7 @@ int main(int argc, char** argv)
 	string actualLine = decLine;
 	printf("\nPrinting out the DECRYPTED File Text:\n %s", actualLine.c_str());
 	//	memset(lineWrite, 0, BUFFER_SIZE);
+
       }
     
     printf("FILE RECEIVED.\n");
