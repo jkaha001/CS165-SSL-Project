@@ -107,6 +107,7 @@ int main(int argc, char** argv)
   char buff[BUFFER_SIZE];
   memset(buff, 0, BUFFER_SIZE);
   bufflen = SSL_read(ssl, buff, BUFFER_SIZE);
+  //  printf("Length of th read is %d!!!\n", bufflen);
 
 //   char challengeReadBuff[bufflen];
 //   memset(challengeReadBuff, 0, bufflen);
@@ -389,9 +390,10 @@ int main(int argc, char** argv)
      int temp = SSL_write(ssl, encLine, encLineSize);
      BIO_flush(server);
      bytesSent += temp;
+     printf("\nBytes sent to server %d\n",temp); 
      
 
-     PAUSE(10);   
+     PAUSE(1);   
      //memset(lineRead, 0, BUFFER_SIZE);
    }
   //openFile.close();

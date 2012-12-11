@@ -147,6 +147,8 @@ int main(int argc, char** argv)
 
 
     buffWriteChallengeLen = SSL_write(ssl, challengeEnc, encryptBufferLength);
+
+    //printf("\nbuffWriteChallengeLen is %d\n", buffWriteChallengeLen);
     //wait to make sure that all information has been successfully sent
     int test = BIO_flush(client);
       
@@ -292,7 +294,7 @@ int main(int argc, char** argv)
     int bytesRead = 1;
     while( bytesRead > 0 )
       {
-	int maxLineSize = RSA_size(rsaPublicKeyVal) - 11;
+	int maxLineSize = BUFFER_SIZE;
 	char lineWrite[maxLineSize];
 	memset(lineWrite, 0, maxLineSize);
 	
@@ -323,8 +325,8 @@ int main(int argc, char** argv)
 
 	int bytesWritten = BIO_write(fileWrite, decLine, decLineSize );
 	printf("\nbytesWritten = %d", bytesWritten);
-	printf("\nPrinting out the DECRYPTED File Text:\n %s", 
-	       buff2hex((const unsigned char*)decLine, decLineSize).c_str());
+	string actualLine = decLine;
+	printf("\nPrinting out the DECRYPTED File Text:\n %s", actualLine.c_str());
 	//	memset(lineWrite, 0, BUFFER_SIZE);
       }
     
